@@ -1,40 +1,35 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, render_template
 from twilio.twiml.messaging_response import MessagingResponse
 
 app = Flask(__name__)
 
-account = "AC9979a3d41a31d5acae3d55cf9a816529"
-token = "17d5401a2b667a9a8863b47d76cd66e5"
-
 admin_numbers = {"19412501194"}
-senders = [] # List of Sender Objects
 volunteers = [] # List of Volunteer Objects
 Hosts = [] # List of Host Objects
 message = ""
 current_sender = None
 
 class Message:
-    def __init__(self, sender, text):
-        self.number = sender # string
+    def __init__(self, phone_number, text):
+        self.phone_number = phone_number # string
         self.text = text # string
 
 class Sender: # id = phone number
-    def __init__(self, sender, text):
-        self.number = sender  #string
-        self.__texts = []  #list of strings
-        self.events = []  # list of strings
-        self.__texts.append(text)  
+    def __init__(self, phone_number, first_text):
+        self.phone_number = phone_number  #string
+        self.__texts = [first_text]  #list of strings
+        self.events = []  # list of strings)  
         
     #getters
-    def get_number(self):
-        return self.number
+    def get_phone_number(self):
+        return self.phone_number
     
     def get_texts(self):
         return self.__texts
     
     #setters
-    def set_number(self, number):
-        self.number = number
+    def set_phone_number(self, phone_number):
+        self.phone_number = phone_number
     
     def append_text(self, text):
         self.__texts.append(text)
@@ -116,7 +111,7 @@ class Host(Sender):
     def set_hours_available(self, hours_available):
         self.hours_available = hours_available
 
-def message_processing(message):
+def message_processing(recieved_message):
     """_summary_: This function will process the message that the user sends to the bot.
     if the message is a new number, we will add them to the list of senders and append their
     message in texts. If the message is not a new number, we will append the message to the list of texts.
@@ -124,29 +119,29 @@ def message_processing(message):
     Args:
         message (_type_): A message containing the text and the number of the sender.
     """
-    for x in senders:
+    for sender in senders:
         # If the number is in the list of senders, we will append the message to the list of texts
-        if message.number == x.number:
-            x.append_text(message.text)
+        if recieved_message.phone_number == sender.get_phone_number():
+            sender.append_text(recieved_message.text)
             return
 
     else:
         # If the number is not in the list of senders, we will add them to the list of senders and append their message in texts
-        senders.append(message.number)
-        message.number.append_text(message.text)
+        senders.append(recieved_message.phone_number)
+        recieved_message.phone_number.append_text(message.text)
 
 
 
 def volunteer_prompt(sender):
     # If new number is not in the list of volunteers, add them to the list
-        if sender.number not in volunteers.phone_numbers:
+        if sender.phone_number not in volunteers.phone_number:
             # Create a new volunteer object
             volunteer = Volunteer()
             volunteers.append(volunteer)
 
             message = ("Thank you for volunteering! Please enter your full name.")
             return
-        elif sender.number in volunteers.phone_numbers:
+        elif sender.phone_number in volunteers.phone_number:
             # If the volunteer is already in the list, we will ask them to enter their full name
             # If the volunteer has already entered their full name, we will ask them to enter their events
             if sender.number.full_name == None:
@@ -171,7 +166,7 @@ def volunteer_prompt(sender):
 
 def host_prompt(sender):
     # If new number is not in the list of Hosts, add them to the list if they get approved by the admin
-    if sender.number not in Hosts.number:
+    if sender.phone_number not in Hosts.phone_number:
         # Saves as sender object until approved by admin
         sender = Sender()
         senders.append(sender)
@@ -180,7 +175,7 @@ def host_prompt(sender):
             "organization name, you will be contacted by an admin to verify your information."
 
         return
-    elif sender.number in senders.number:
+    elif sender.phone_number in senders.phone_number:
         if sender.__texts[-2] == "Host":
 
             message = "Thank you for submitting your organization name. You will be " \
@@ -194,19 +189,20 @@ def add_host_promt(sent_message):
 @app.route("/sms", methods=['GET', 'POST'])
 def incoming_sms():
     """Send a dynamic reply to an incoming text message"""
+    senders = [ Sender("19412501194", "Host") ]
 
     # Start our TwiML response
     resp = MessagingResponse()
 
     # Add a message so we can use message.number and message.text
-    message = Message(request.values.get('From', None), request.values.get('Body', None))
+    recieved_message = Message(request.values.get('From', None), request.values.get('Body', None))
 
     #  process the message (appends phone number to senders list and appends message to texts list)
-    message_processing(message)
+    message_processing(recieved_message)
 
     # gets current sender
     for sender in senders:
-        if sender.number == message.number:
+        if sender.phone_number == message.phone_number:
             current_sender = sender
 
     # If the user is a volunteer they text volunteer to our number
@@ -221,7 +217,7 @@ def incoming_sms():
         resp.message(message)
         return str(resp)
     
-    elif 'Add Host' in current_sender.get_texts()[:-7] and sender.number in admin_numbers:
+    elif 'Add Host' in current_sender.get_texts()[:-7] and sender.phone_number in admin_numbers:
         add_host_promt(message)
     # If the user hasnt typed either volunteer or host, they are prompted to do so
     else:
