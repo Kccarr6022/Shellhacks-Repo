@@ -124,9 +124,12 @@ def message_processing(message):
     Args:
         message (_type_): A message containing the text and the number of the sender.
     """
-    if message.number in senders.number:
+    for x in senders:
         # If the number is in the list of senders, we will append the message to the list of texts
-        message.number.append_text(message.text)
+        if message.number == x.number:
+            x.append_text(message.text)
+            return
+
     else:
         # If the number is not in the list of senders, we will add them to the list of senders and append their message in texts
         senders.append(message.number)
@@ -138,8 +141,8 @@ def volunteer_prompt(sender):
     # If new number is not in the list of volunteers, add them to the list
         if sender.number not in volunteers.phone_numbers:
             # Create a new volunteer object
-            sender.number = Volunteer()
-            volunteers.append(sender.number)
+            volunteer = Volunteer()
+            volunteers.append(volunteer)
 
             message = ("Thank you for volunteering! Please enter your full name.")
             return
@@ -170,8 +173,8 @@ def host_prompt(sender):
     # If new number is not in the list of Hosts, add them to the list if they get approved by the admin
     if sender.number not in Hosts.number:
         # Saves as sender object until approved by admin
-        sender.number = Sender()
-        senders.append(sender.number)
+        sender = Sender()
+        senders.append(sender)
 
         message = "Thank you for hosting! Please enter your organization name. After you have entered your " \
             "organization name, you will be contacted by an admin to verify your information."
