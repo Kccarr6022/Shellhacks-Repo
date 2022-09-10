@@ -196,7 +196,7 @@ def incoming_sms():
     resp = MessagingResponse()
 
     # Add a message so we can use message.number and message.text
-    message = message(request.values.get('From', None), request.values.get('Body', None))
+    message = Message(request.values.get('From', None), request.values.get('Body', None))
 
     #  process the message (appends phone number to senders list and appends message to texts list)
     message_processing(message)
