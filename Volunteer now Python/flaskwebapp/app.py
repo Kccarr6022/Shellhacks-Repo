@@ -7,29 +7,30 @@ account = "AC9979a3d41a31d5acae3d55cf9a816529"
 token = "17d5401a2b667a9a8863b47d76cd66e5"
 
 admin_numbers = {"19412501194"}
-senders = []
-volunteers = []
-Hosts = []
+senders = [] # List of Sender Objects
+volunteers = [] # List of Volunteer Objects
+Hosts = [] # List of Host Objects
 message = ""
+current_sender = None
 
 class Message:
     def __init__(self, sender, text):
-        self.number = sender
-        self.text = text
+        self.number = sender # string
+        self.text = text # string
 
-class Sender:
+class Sender: # id = phone number
     def __init__(self, sender, text):
-        self.number = sender
-        self.__texts = []
-        self.events = []
-        self.__texts.append(text)
+        self.number = sender  #string
+        self.__texts = []  #list of strings
+        self.events = []  # list of strings
+        self.__texts.append(text)  
         
     #getters
     def get_number(self):
         return self.number
     
-    def get_text(self):
-        return self.text
+    def get_texts(self):
+        return self.__texts
     
     #setters
     def set_number(self, number):
@@ -44,9 +45,9 @@ class Volunteer(Sender):
     """
     def __init__(self):
         # initialize variables
-        self.full_name = None
-        self.events = []
-        self.hours = []
+        self.full_name = None # string
+        self.events = [] # list of strings
+        self.hours = [] # list of ints
 
     # getters
     def get_phone_number(self):
@@ -79,9 +80,9 @@ class Host(Sender):
     """
     def __init__(self):
         # initialize variables
-        self.organization = None
-        self.dates = []
-        self.hours_available = []
+        self.organization = None # string
+        self.dates = [] # list of strings
+        self.hours_available = [] # list of ints
 
     # getters
     def get_phone_number(self):
@@ -197,23 +198,27 @@ def incoming_sms():
     # Add a message so we can use message.number and message.text
     message = message(request.values.get('From', None), request.values.get('Body', None))
 
-    #  process the message
+    #  process the message (appends phone number to senders list and appends message to texts list)
     message_processing(message)
 
+    # gets current sender
+    for sender in senders:
+        if sender.number == message.number:
+            current_sender = sender
 
     # If the user is a volunteer they text volunteer to our number
-    if message.text == 'Volunteer':
+    if 'Volunteer' in current_sender.get_texts()[:-7]:
         volunteer_prompt(message)
         resp.message(message)
         return str(resp)
     
     # If the user is a volunteer they text volunteer to our number
-    elif message.text == 'Host':
+    elif 'Host' in current_sender.get_texts()[:-7]:
         host_prompt(message)
         resp.message(message)
         return str(resp)
     
-    elif message.text == 'Add Host' and message.number in admin_numbers:
+    elif 'Add Host' in current_sender.get_texts()[:-7] and sender.number in admin_numbers:
         add_host_promt(message)
     # If the user hasnt typed either volunteer or host, they are prompted to do so
     else:
