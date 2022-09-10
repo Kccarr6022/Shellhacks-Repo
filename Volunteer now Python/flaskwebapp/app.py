@@ -3,12 +3,6 @@ from twilio.twiml.messaging_response import MessagingResponse
 
 app = Flask(__name__)
 
-admin_numbers = {"19412501194"}
-volunteers = [] # List of Volunteer Objects
-Hosts = [] # List of Host Objects
-message = ""
-current_sender = None
-
 class Message:
     def __init__(self, phone_number, text):
         self.phone_number = phone_number # string
@@ -111,6 +105,20 @@ class Host(Sender):
     def set_hours_available(self, hours_available):
         self.hours_available = hours_available
 
+senders = [ Sender("19412501194", "Sender") ]
+volunteers = [ Volunteer() ] # List of Volunteer Objects
+volunteers[0].set_phone_number("19412501194")
+volunteers[0].set_full_name("John Doe")
+hosts = [ Host() ] # List of Host Objects
+hosts[0].set_phone_number("19412501194")
+hosts[0].set_organization("Organization")
+hosts[0].set_events(["Event 1", "Event 2"])
+hosts[0].set_dates(["Date 1", "Date 2"])
+hosts[0].set_hours_available([1, 2])
+hosts[0].set_dates(["Date 1", "Date 2"])
+hosts[0].set_hours_available([1, 2])
+
+
 def message_processing(recieved_message):
     """_summary_: This function will process the message that the user sends to the bot.
     if the message is a new number, we will add them to the list of senders and append their
@@ -127,69 +135,77 @@ def message_processing(recieved_message):
 
     else:
         # If the number is not in the list of senders, we will add them to the list of senders and append their message in texts
-        senders.append(recieved_message.phone_number)
-        recieved_message.phone_number.append_text(message.text)
+        new_sender = Sender(recieved_message.phone_number, recieved_message.text)
+        senders.append(new_sender)
 
 
 
-def volunteer_prompt(sender):
+def volunteer_prompt_response(sender, output_message):
     # If new number is not in the list of volunteers, add them to the list
-        if sender.phone_number not in volunteers.phone_number:
+    global volunteers
+
+    for volunteer in volunteers:
+        if sender.phone_number != volunteer.phone_number:
             # Create a new volunteer object
             volunteer = Volunteer()
             volunteers.append(volunteer)
-
-            message = ("Thank you for volunteering! Please enter your full name.")
-            return
-        elif sender.phone_number in volunteers.phone_number:
-            # If the volunteer is already in the list, we will ask them to enter their full name
-            # If the volunteer has already entered their full name, we will ask them to enter their events
-            if sender.number.full_name == None:
-                sender.number.full_name = sender.text
-                message = ("Thank you! Please enter the events you would like to volunteer for.")
-                return
-            elif sender.number.full_name != None:
-                if sender.number.events == None:
-                    sender.number.events = sender.text
-                    message = ("Thank you! Please enter the hours you would like to volunteer for.")
+            return "Thank you for volunteering! Please enter your full name."
+    else:
+        # If the volunteer is already in the list, we will ask them to enter their full name
+        # If the volunteer has already entered their full name, we will ask them to enter their events
+        if sender.number.full_name == None: # if name is not registered yet
+            sender.number.full_name = sender.text
+            return "Thank you! Please enter the events you would like to volunteer for."
+        elif sender.number.full_name != None: # name registered already
+            if sender.number.events == None:
+                sender.number.events = sender.text
+                return "Thank you! Please enter the hours you would like to volunteer for."
+            elif sender.number.events != None:
+                if sender.number.hours == None:
+                    sender.number.hours = sender.text
+                    return "Thank you! You have been added to the list of volunteers."
+                elif sender.number.hours != None:
+                    return "You have already entered your information." + "You are attending the following events: " 
+                    + sender.number.events + "You are volunteering for the following hours: " + sender.number.hours
                     return
-                elif sender.number.events != None:
-                    if sender.number.hours == None:
-                        sender.number.hours = sender.text
-                        message = ("Thank you! You have been added to the list of volunteers.")
-                        return
-                    elif sender.number.hours != None:
-                        message = ("You have already entered your information.")
-                        return
         
         
 
-def host_prompt(sender):
+def host_prompt_response(sender, output_message):
     # If new number is not in the list of Hosts, add them to the list if they get approved by the admin
-    if sender.phone_number not in Hosts.phone_number:
-        # Saves as sender object until approved by admin
-        sender = Sender()
-        senders.append(sender)
+    global hosts
 
-        message = "Thank you for hosting! Please enter your organization name. After you have entered your " \
-            "organization name, you will be contacted by an admin to verify your information."
+    for host in hosts:
+        if sender.phone_number not in host.phone_number:
+            # Saves as sender object until approved by admin
+            sender = Sender()
+            senders.append(sender)
 
-        return
-    elif sender.phone_number in senders.phone_number:
+            return "Thank you for hosting! Please enter your organization name. After you have entered your " \
+                "organization name, you will be contacted by an admin to verify your information."
+
+    else:
         if sender.__texts[-2] == "Host":
 
-            message = "Thank you for submitting your organization name. You will be " \
+            return "Thank you for submitting your organization name. You will be " \
                 "contacted by an admin to verify your information."
 
-def add_host_promt(sent_message):
+def add_host_promt_response(sender):
+    global hosts
     pass;
 
+def no_prompt_response(sender):
+    return "Please text Volunteer or Host"
 
 
 @app.route("/sms", methods=['GET', 'POST'])
 def incoming_sms():
     """Send a dynamic reply to an incoming text message"""
-    senders = [ Sender("19412501194", "Host") ]
+
+    # variables
+    output_text = ""
+    admin_numbers = {"19412501194"}
+    current_sender = None
 
     # Start our TwiML response
     resp = MessagingResponse()
@@ -202,30 +218,26 @@ def incoming_sms():
 
     # gets current sender
     for sender in senders:
-        if sender.phone_number == message.phone_number:
+        if sender.phone_number == recieved_message.phone_number:
             current_sender = sender
 
     # If the user is a volunteer they text volunteer to our number
-    if 'Volunteer' in current_sender.get_texts()[:-7]:
-        volunteer_prompt(message)
-        resp.message(message)
-        return str(resp)
+    if "Volunteer" in current_sender.get_texts():
+        output_text = volunteer_prompt_response(current_sender, output_text)
     
     # If the user is a volunteer they text volunteer to our number
-    elif 'Host' in current_sender.get_texts()[:-7]:
-        host_prompt(message)
-        resp.message(message)
-        return str(resp)
+    elif 'Host' in current_sender.get_texts()[:-1]:
+        output_text = host_prompt_response(current_sender, output_text)
     
-    elif 'Add Host' in current_sender.get_texts()[:-7] and sender.phone_number in admin_numbers:
-        add_host_promt(message)
+    elif 'Add Host' in current_sender.get_texts()[:-1] and sender.phone_number in admin_numbers:
+        output_text = add_host_promt_response(current_sender, output_text)
     # If the user hasnt typed either volunteer or host, they are prompted to do so
     else:
-        message = "Please text Volunteer or Host"
-        resp.message(message)
-        return str(resp)
+        output_text = no_prompt_response(current_sender, output_text)
 
-    del message
+
+    resp.message(output_text)
+    return str(resp)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port='8080', debug=True)
