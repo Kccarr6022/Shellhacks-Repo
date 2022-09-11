@@ -11,6 +11,7 @@ A service that allows users to search and provide information for volunteer oppo
 # Example
 
 ![screenshot](WebsiteExample.png)
+![screenshot](LoginExample.png)
 
 ![screenshot](MessageExample(1).png)
 ![screenshot](MessageExample(2).png)
