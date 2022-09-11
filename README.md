@@ -38,7 +38,7 @@ As it's hard to keep track of multiple events occurring constantly and missing o
 - Making a fully functional website
 - Completing a full stack project within the given time frame
 - Coming up with a feasible idea
-- Buiding a database with SQLAlchemy
+- Building a database with SQLAlchemy
 
 ## Accomplishments that we're proud of
 - Learning Flask
