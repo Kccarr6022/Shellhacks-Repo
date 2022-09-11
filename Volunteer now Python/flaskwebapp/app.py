@@ -8,9 +8,9 @@ import logging
 import os
 
 account_sid = "AC9979a3d41a31d5acae3d55cf9a816529"
-auth_token = "17d5401a2b667a9a8863b47d76cd66e5"
+auth_token = "ec4dadde30c633ea8e83a76343b147ee"
 client = Client(account_sid, auth_token)
-admin_numbers = ["+19412501194", "+19412671413"]
+admin_numbers = ["+19412501194", "+12396459942"]
 
 logging.basicConfig()
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -140,17 +140,17 @@ class Host(Sender):
     def set_hours_available(self, hours_available):
         self.hours_available = hours_available
 
-class Message(db.Model):
+class Message_db(db.Model):
     message_id = db.Column(db.Integer,primary_key=True)
     user_phone = db.Column(db.String(10),db.ForeignKey('volunteer.phone_num'))
     message = db.Column(db.String(500),nullable=False)
 
-class Volunteer(db.Model):
+class Volunteer_db(db.Model):
     phone_num=db.Column(db.String(10),primary_key=True)
     name=db.Column(db.String(200),nullable=False)
     hours=db.Column(db.Integer,nullable=False)
 
-class Event(db.Model):
+class Event_db(db.Model):
     event_id=db.Column(db.Integer,primary_key=True)
     host_id=db.Column(db.Integer,nullable=False)
     date_created=db.Column(db.String(10), default=datetime.utcnow)
@@ -160,21 +160,25 @@ class Event(db.Model):
     location=db.Column(db.String(200),nullable=False)
     description=db.Column(db.String(500),nullable=False)
 
-class Host(db.Model):
+class Host_db(db.Model):
     host_id=db.Column(db.Integer,primary_key=True)
     phone_num=db.Column(db.String(10))
     organization=db.Column(db.String(200),nullable=False)
     def __repr__(self):
         return '<Name %r>' % self.organization
-class Hosts(db.Model):
+class Hosts_db(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     host_id=db.Column(db.Integer)
     event_id=db.Column(db.Integer)
 
-class Attends(db.Model):
+class Attends_db(db.Model):
     attending_id=db.Column(db.Integer,primary_key=True)
     volunteer_num=db.Column(db.String(10),db.ForeignKey('volunteer.phone_num'))
     event_id=db.Column(db.Integer,db.ForeignKey('event.event_id'))
+
+senders = [ Sender("1234567890", "Hello") ]
+volunteers = [ Volunteer() ]
+hosts = [ Host() ]
 
 def message_processing(recieved_message):
     """_summary_: This function will process the message that the user sends to the bot.
@@ -234,19 +238,19 @@ def volunteer_prompt_response(sender, output_message):
 def host_prompt_response(sender, output_message):
     # If new number is not in the list of Hosts, add them to the list if they get approved by the admin
     global hosts
+    global admin_numbers
 
     for host in hosts:
         if sender.phone_number == host.phone_number:
 
             for phone_number in admin_numbers:
-                message = client.messages \
-                    .create(
+                message = client.messages.create(
                         body=sender.get_texts()[-1],
                         from_='+13329005194',
                         to=phone_number
                     )
 
-                return "The admin has recieved your message and will soon get back with you."
+            return "The admin has recieved your message and will soon get back with you."
 
     else:
     # Saves as sender object until approved by admin
@@ -323,12 +327,12 @@ def generate():
         ['9287441210','Ronald Chatalier',200]
     ]
     try:
-        elete=db.session.query(Volunteer).delete()
+        elete=db.session.query(Volunteer_db).delete()
         db.session.commit()
     except:
         db.session.rollback()
     for v in volunteer:
-        new_volunteer=Volunteer(phone_num=v[0],name=v[1],hours=v[2])
+        new_volunteer=Volunteer_db(phone_num=v[0],name=v[1],hours=v[2])
         try:
             db.session.add(new_volunteer)
             db.session.commit()
@@ -336,20 +340,20 @@ def generate():
             print(f'error on {new_volunteer.name}')
     msg+='\nVolunteer generated '
     try:
-        elete=db.session.query(Event).delete()
+        elete=db.session.query(Event_db).delete()
         db.session.commit()
     except:
         db.session.rollback()
 
     try:
-        elete=db.session.query(Attends).delete()
+        elete=db.session.query(Attends_db).delete()
         db.session.commit()
         msg+='Generated Attends'
     except:
         db.session.rollback()
 
     try:
-        elete=db.session.query(Hosts).delete()
+        elete=db.session.query(Hosts_db).delete()
         db.session.commit()
     except:
         db.session.rollback()
@@ -362,7 +366,7 @@ def generate():
     ]
     for e in event:
         try:
-            new_event=Event(host_id=1,date=e[2],hours=e[3],name=e[4],location=e[5],description=e[6])
+            new_event=Event_db(host_id=1,date=e[2],hours=e[3],name=e[4],location=e[5],description=e[6])
             db.session.add(new_event)
             db.session.commit()
             msg+='Generated Event'
@@ -379,7 +383,7 @@ def add():
     if request.method=="POST":
         name=request.form['name'] #form input name
         phone=request.form['phone']#
-        new_host=Host(organization=name,phone_num=phone)
+        new_host=Host_db(organization=name,phone_num=phone)
         print(new_host)
         try:
             db.session.add(new_host) # db.session.delete(user_to_delete)
@@ -398,18 +402,18 @@ def add():
 def addevent():
     if request.method == "POST":
         try:
-            host_id = Host.query.filter_by(organization=request.form['host']).first().host_id
+            host_id = Host_db.query.filter_by(organization=request.form['host']).first().host_id
             if host_id is not None:
                 date=(request.form['date'])[:10] # date format issues...
                 hours=request.form['hours']
                 name=request.form['name']
                 location=request.form['location']
                 description=request.form['desc']
-                new=Event(host_id=host_id,date=date,hours=hours,name=name,location=location,description=description)
+                new=Event_db(host_id=host_id,date=date,hours=hours,name=name,location=location,description=description)
                 try:
                     db.session.add(new)
                     db.session.commit()
-                    new_hosts_event=Hosts(host_id=new.host_id,
+                    new_hosts_event=Hosts_db(host_id=new.host_id,
                     event_id=new.event_id)
                     db.session.add(new_hosts_event)
                     db.session.commit()
@@ -427,10 +431,10 @@ def index():
 
 @app.route('/showevents',methods=['POST','GET'])
 def showevents():
-    hosts = Host.query.order_by(Host.host_id).all()
+    hosts = Host_db.query.order_by(Host_db.host_id).all()
     names = []
     #print(hosts)
-    events = db.session.query(Event,Host).filter(Event.host_id==Host.host_id)#Event.query.order_by(Event.date_created)
+    events = db.session.query(Event_db,Host).filter(Event_db.host_id==Host_db.host_id)#Event.query.order_by(Event.date_created)
 
     return render_template("showevents.html",events=events)
 
@@ -439,10 +443,10 @@ def attend(id):
     volunteer_phone= '4079872931'
 
     #if not already attending...
-    if Attends.query.filter(Attends.event_id==id,Attends.volunteer_num==volunteer_phone).count()==0:
+    if Attends_db.query.filter(Attends_db.event_id==id,Attends_db.volunteer_num==volunteer_phone).count()==0:
 
         try:
-            new_attends = Attends(volunteer_num=volunteer_phone,event_id=id)
+            new_attends = Attends_db(volunteer_num=volunteer_phone,event_id=id)
             db.session.add(new_attends)
             db.session.commit()
         except:
@@ -458,7 +462,7 @@ def viewhistory(id):
     #return 'hi'
     if not id:
         id =1
-    events = db.session.query(Event,Attends,Host).filter(Event.event_id==Attends.event_id,Host.host_id==Event.host_id,Attends.volunteer_num==id)
+    events = db.session.query(Event_db,Attends_db,Host_db).filter(Event_db.event_id==Attends_db.event_id,Host_db.host_id==Event_db.host_id,Attends_db.volunteer_num==id)
     for e,a,h in events:
         print(e.name,a.volunteer_num,h.organization)
     return render_template('viewhistory.html', events=events)
@@ -466,14 +470,14 @@ def viewhistory(id):
 @app.route('/new')
 def new():
     #colt steel
-    events = db.session.query(Event,Attends,Host).filter(Event.event_id==Attends.event_id,Host.host_id==Event.host_id,Attends.volunteer_num=='4079872931')
+    events = db.session.query(Event_db,Attends_db,Host_db).filter(Event_db.event_id==Attends_db.event_id,Host.host_id==Event_db.host_id,Attends_db.volunteer_num=='4079872931')
     for e,a,h in events:
         print(e.name,a.volunteer_num,h.organization)
     return render_template('new.html', events=events)
 
 @app.route('/data')
 def data(): 
-    events = db.session.query(Event,Host).filter(Event.host_id==Host.host_id)
+    events = db.session.query(Event_db,Host).filter(Event_db.host_id==Host_db.host_id)
     for e,h in events:
         print(f'e.name {e.name}')
     return render_template('data.html',events=events)
@@ -518,5 +522,49 @@ def incoming_sms():
     return str(resp)
 
 
+def main(): # debugging code
+    while True:
+        """Send a dynamic reply to an incoming text message"""
+        global output_text
+        # variables
+        output_text = ""
+        current_sender = None
+        output_text = input("Enter a message: ")
+        # Start our TwiML response
+        resp = MessagingResponse()
+
+        # Add a message so we can use message.number and message.text
+        recieved_message = Message("+19412501194", output_text)
+
+        #  process the message (appends phone number to senders list and appends message to texts list)
+        message_processing(recieved_message)
+
+        # gets current sender
+        for sender in senders:
+            if sender.phone_number == recieved_message.phone_number:
+                current_sender = sender
+
+        # If the user is a volunteer they text volunteer to our number
+        if "Volunteer" in current_sender.get_texts()[-4:] and "Host" not in current_sender.get_texts()[-2:]:
+            output_text = volunteer_prompt_response(current_sender, output_text)
+
+        # If the user is a volunteer they text volunteer to our number
+        elif "Host" in current_sender.get_texts()[-2:] and "Volunteer" not in current_sender.get_texts()[-4:]:
+            output_text = host_prompt_response(current_sender, output_text)
+
+        elif 'Add Host' in current_sender.get_texts() and sender.phone_number in admin_numbers:
+            output_text = add_host_promt_response(current_sender, output_text)
+        # If the user hasnt typed either volunteer or host, they are prompted to do so
+        else:
+            output_text = no_prompt_response(current_sender)
+
+        resp.message(output_text)
+        print(output_text)
+
+
+if __name__ == "__main__":
+    main()
+"""
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
+"""
