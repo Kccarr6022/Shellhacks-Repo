@@ -154,23 +154,23 @@ def volunteer_prompt_response(sender, output_message):
     # checks if volunteer has been added to the list
     for volunteer in volunteers:
         if sender.phone_number == volunteer.phone_number:
-            # If the volunteer is already in the list, we will ask them to enter their full name
-            # If the volunteer has already entered their full name, we will ask them to enter their events
+            
             if volunteer.full_name == None: # if name is not registered yet
-                sender.full_name = sender.get_texts()[-1]
-                return "Thank you! Please enter the events you would like to volunteer for."
-            elif volunteer.full_name != None: # name registered already
-                if sender.events == None:
-                    sender.events = sender.get_texts()[-1]
-                    return "Thank you! Please enter the hours you would like to volunteer for."
-                elif volunteer.events != None:
-                    if volunteer.hours == None:
-                        sender.hours = sender.get_texts()[-1]
-                        return "Thank you! You have been added to the list of volunteers."
-                    elif volunteer.hours != None:
-                        return "You have already entered your information." + "You are attending the following events: " \
-                        + sender.events + "You are volunteering for the following hours: " + sender.hours
-                        return
+                volunteer.full_name = sender.get_texts()[-1]
+                return "Thank you for registering as a volunteer, " + volunteer.full_name + ". Please text the name of the event you would like to volunteer for." \
+                    "1. YMCA \n 2. Food Bank \n 3. Habitat for Humanity \n 4. Other"
+            elif volunteer.events == []: # name registered already
+                    volunteer.events.append(sender.get_texts()[-1])
+                    print (sender.get_texts()[-1])
+                    return "How many hours will you be volunteering for"
+            
+            elif volunteer.hours == []:
+                volunteer.hours.append(sender.get_texts()[-1])
+                return "How many hours will you be volunteering for"
+            elif volunteer.hours != None:
+                volunteer.hours.append(sender.get_texts()[-1])
+                body = ("You are attending currently attending {} for {} hours.".format("volunteer.events[-1]", "3"))
+                return body
     else:
         
         # Create a new volunteer object
@@ -207,11 +207,51 @@ def add_host_promt_response(sender):
 def no_prompt_response(sender):
     return "Please text Volunteer or Host"
 
+def main():
+    while True:
+        text_input = input("Enter a message: ")
+        """Send a dynamic reply to an incoming text message"""
+        global output_text
+        # variables
+        output_text = ""
+        admin_numbers = {"19412501194"}
+        current_sender = None
+
+        # Start our TwiML response
+        resp = MessagingResponse()
+
+        # Add a message so we can use message.number and message.text
+        recieved_message = Message("+19412501194", text_input)
+
+        #  process the message (appends phone number to senders list and appends message to texts list)
+        message_processing(recieved_message)
+
+        # gets current sender
+        for sender in senders:
+            if sender.phone_number == recieved_message.phone_number:
+                current_sender = sender
+
+        # If the user is a volunteer they text volunteer to our number
+        if "Volunteer" in current_sender.get_texts()[-4:] and "Host" not in current_sender.get_texts()[-2:]:
+            output_text = volunteer_prompt_response(current_sender, output_text)
+        
+        # If the user is a volunteer they text volunteer to our number
+        elif "Host" in current_sender.get_texts()[-2:] and "Volunteer" not in current_sender.get_texts()[-4:]:
+            output_text = host_prompt_response(current_sender, output_text)
+        
+        elif 'Add Host' in current_sender.get_texts() and sender.phone_number in admin_numbers:
+            output_text = add_host_promt_response(current_sender, output_text)
+        # If the user hasnt typed either volunteer or host, they are prompted to do so
+        else:
+            output_text = no_prompt_response(current_sender)
+
+        print(output_text)
+
 
 @app.route("/sms", methods=['GET', 'POST'])
 def incoming_sms():
     """Send a dynamic reply to an incoming text message"""
-
+    global output_text
     # variables
     output_text = ""
     admin_numbers = {"19412501194"}
@@ -232,11 +272,11 @@ def incoming_sms():
             current_sender = sender
 
     # If the user is a volunteer they text volunteer to our number
-    if "Volunteer" in current_sender.get_texts() and "Host" not in current_sender.get_texts()[-1]:
+    if "Volunteer" in current_sender.get_texts()[-4:] and "Host" not in current_sender.get_texts()[-2:]:
         output_text = volunteer_prompt_response(current_sender, output_text)
     
     # If the user is a volunteer they text volunteer to our number
-    elif "Host" in current_sender.get_texts() and "Volunteer" not in current_sender.get_texts()[-1]:
+    elif "Host" in current_sender.get_texts()[-2:] and "Volunteer" not in current_sender.get_texts()[-4:]:
         output_text = host_prompt_response(current_sender, output_text)
     
     elif 'Add Host' in current_sender.get_texts() and sender.phone_number in admin_numbers:
@@ -245,9 +285,8 @@ def incoming_sms():
     else:
         output_text = no_prompt_response(current_sender)
 
-
     resp.message(output_text)
     return str(resp)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port='8080', debug=True)
+   main()
