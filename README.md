@@ -41,17 +41,16 @@ https://volunteernow.tech
 - Making a fully functional website
 - Completing a full stack project within the given time frame
 - Coming up with a feasible idea
-- Buiding a database with SQLAlchemy
-- 
 
 ## Accomplishments that we're proud of
 - Learning Flask
 - Multistack application for making 
-- Updating and learning multiple device connection
 
 ## What we learned
 - How to implement Flask
 - Updating user interface elements
+- Front end design concepts
+- Create database with SQLAlchemy and have it interface with AWS
 
 ## What's next for VolunteerNow
 - Having to add more features and allow more devices to cooperate with it
