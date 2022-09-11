@@ -8,6 +8,20 @@ class Message:
         self.phone_number = phone_number # string
         self.text = text # string
 
+        #getters
+        def get_phone_number(self):
+            return self.phone_number
+
+        def get_text(self):
+            return self.text
+        
+        #setters
+        def set_phone_number(self, phone_number):
+            self.phone_number = phone_number
+        
+        def set_text(self, text):
+            self.text = text
+
 class Sender: # id = phone number
     def __init__(self, phone_number, first_text):
         self.phone_number = phone_number  #string
@@ -34,6 +48,7 @@ class Volunteer(Sender):
     """
     def __init__(self):
         # initialize variables
+        self.phone_number = ""
         self.full_name = None # string
         self.events = [] # list of strings
         self.hours = [] # list of ints
@@ -69,6 +84,7 @@ class Host(Sender):
     """
     def __init__(self):
         # initialize variables
+        self.phone_number = ""
         self.organization = None # string
         self.dates = [] # list of strings
         self.hours_available = [] # list of ints
@@ -105,18 +121,9 @@ class Host(Sender):
     def set_hours_available(self, hours_available):
         self.hours_available = hours_available
 
-senders = [ Sender("19412501194", "Sender") ]
+senders = [ Sender("+19412501194", "Sender") ]
 volunteers = [ Volunteer() ] # List of Volunteer Objects
-volunteers[0].set_phone_number("19412501194")
-volunteers[0].set_full_name("John Doe")
 hosts = [ Host() ] # List of Host Objects
-hosts[0].set_phone_number("19412501194")
-hosts[0].set_organization("Organization")
-hosts[0].set_events(["Event 1", "Event 2"])
-hosts[0].set_dates(["Date 1", "Date 2"])
-hosts[0].set_hours_available([1, 2])
-hosts[0].set_dates(["Date 1", "Date 2"])
-hosts[0].set_hours_available([1, 2])
 
 
 def message_processing(recieved_message):
@@ -144,30 +151,33 @@ def volunteer_prompt_response(sender, output_message):
     # If new number is not in the list of volunteers, add them to the list
     global volunteers
 
+    # checks if volunteer has been added to the list
     for volunteer in volunteers:
-        if sender.phone_number != volunteer.phone_number:
-            # Create a new volunteer object
+        if sender.phone_number == volunteer.phone_number:
+            # If the volunteer is already in the list, we will ask them to enter their full name
+            # If the volunteer has already entered their full name, we will ask them to enter their events
+            if volunteer.full_name == None: # if name is not registered yet
+                sender.full_name = sender.get_texts()[-1]
+                return "Thank you! Please enter the events you would like to volunteer for."
+            elif volunteer.full_name != None: # name registered already
+                if sender.events == None:
+                    sender.events = sender.get_texts()[-1]
+                    return "Thank you! Please enter the hours you would like to volunteer for."
+                elif volunteer.events != None:
+                    if volunteer.hours == None:
+                        sender.hours = sender.get_texts()[-1]
+                        return "Thank you! You have been added to the list of volunteers."
+                    elif volunteer.hours != None:
+                        return "You have already entered your information." + "You are attending the following events: " \
+                        + sender.events + "You are volunteering for the following hours: " + sender.hours
+                        return
+    else:
+        
+        # Create a new volunteer object
             volunteer = Volunteer()
+            volunteer.phone_number = sender.phone_number
             volunteers.append(volunteer)
             return "Thank you for volunteering! Please enter your full name."
-    else:
-        # If the volunteer is already in the list, we will ask them to enter their full name
-        # If the volunteer has already entered their full name, we will ask them to enter their events
-        if sender.number.full_name == None: # if name is not registered yet
-            sender.number.full_name = sender.text
-            return "Thank you! Please enter the events you would like to volunteer for."
-        elif sender.number.full_name != None: # name registered already
-            if sender.number.events == None:
-                sender.number.events = sender.text
-                return "Thank you! Please enter the hours you would like to volunteer for."
-            elif sender.number.events != None:
-                if sender.number.hours == None:
-                    sender.number.hours = sender.text
-                    return "Thank you! You have been added to the list of volunteers."
-                elif sender.number.hours != None:
-                    return "You have already entered your information." + "You are attending the following events: " 
-                    + sender.number.events + "You are volunteering for the following hours: " + sender.number.hours
-                    return
         
         
 
@@ -176,16 +186,16 @@ def host_prompt_response(sender, output_message):
     global hosts
 
     for host in hosts:
-        if sender.phone_number not in host.phone_number:
+        if sender.phone_number != host.phone_number:
             # Saves as sender object until approved by admin
-            sender = Sender()
+            sender = Sender(sender.phone_number, sender.get_texts()[-1])
             senders.append(sender)
 
             return "Thank you for hosting! Please enter your organization name. After you have entered your " \
                 "organization name, you will be contacted by an admin to verify your information."
 
     else:
-        if sender.__texts[-2] == "Host":
+        if sender.get_texts()[:-2] == "Host":
 
             return "Thank you for submitting your organization name. You will be " \
                 "contacted by an admin to verify your information."
@@ -222,18 +232,18 @@ def incoming_sms():
             current_sender = sender
 
     # If the user is a volunteer they text volunteer to our number
-    if "Volunteer" in current_sender.get_texts():
+    if "Volunteer" in current_sender.get_texts() and "Host" not in current_sender.get_texts()[-1]:
         output_text = volunteer_prompt_response(current_sender, output_text)
     
     # If the user is a volunteer they text volunteer to our number
-    elif 'Host' in current_sender.get_texts()[:-1]:
+    elif "Host" in current_sender.get_texts() and "Volunteer" not in current_sender.get_texts()[-1]:
         output_text = host_prompt_response(current_sender, output_text)
     
-    elif 'Add Host' in current_sender.get_texts()[:-1] and sender.phone_number in admin_numbers:
+    elif 'Add Host' in current_sender.get_texts() and sender.phone_number in admin_numbers:
         output_text = add_host_promt_response(current_sender, output_text)
     # If the user hasnt typed either volunteer or host, they are prompted to do so
     else:
-        output_text = no_prompt_response(current_sender, output_text)
+        output_text = no_prompt_response(current_sender)
 
 
     resp.message(output_text)
