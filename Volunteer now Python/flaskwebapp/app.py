@@ -22,7 +22,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydb.db'
 # init database
 db = SQLAlchemy(app)
 
-class Message:
+class Messageclass:
     def __init__(self, phone_number, text):
         self.phone_number = phone_number # string
         self.text = text # string
@@ -41,7 +41,7 @@ class Message:
         def set_text(self, text):
             self.text = text
 
-class Sender: # id = phone number
+class Senderclass: # id = phone number
     def __init__(self, phone_number, first_text):
         self.phone_number = phone_number  #string
         self.__texts = [first_text]  #list of strings
@@ -62,7 +62,7 @@ class Sender: # id = phone number
         self.__texts.append(text)
 
 
-class Volunteer(Sender):
+class Volunteerclass(Senderclass):
     """_summary_: We have our volunteer class, which will be used to store all the information about the volunteer.
     """
     def __init__(self):
@@ -98,7 +98,7 @@ class Volunteer(Sender):
     def set_hours(self, hours):
         self.hours = hours
 
-class Host(Sender):
+class Hostclass(Senderclass):
     """_summary_: We have our host class, which will be used to store all the information about the host.
     """
     def __init__(self):
@@ -140,17 +140,17 @@ class Host(Sender):
     def set_hours_available(self, hours_available):
         self.hours_available = hours_available
 
-class Message_db(db.Model):
+class Message(db.Model):
     message_id = db.Column(db.Integer,primary_key=True)
     user_phone = db.Column(db.String(10),db.ForeignKey('volunteer.phone_num'))
     message = db.Column(db.String(500),nullable=False)
 
-class Volunteer_db(db.Model):
+class Volunteer(db.Model):
     phone_num=db.Column(db.String(10),primary_key=True)
     name=db.Column(db.String(200),nullable=False)
     hours=db.Column(db.Integer,nullable=False)
 
-class Event_db(db.Model):
+class Event(db.Model):
     event_id=db.Column(db.Integer,primary_key=True)
     host_id=db.Column(db.Integer,nullable=False)
     date_created=db.Column(db.String(10), default=datetime.utcnow)
@@ -160,25 +160,26 @@ class Event_db(db.Model):
     location=db.Column(db.String(200),nullable=False)
     description=db.Column(db.String(500),nullable=False)
 
-class Host_db(db.Model):
+class Host(db.Model):
     host_id=db.Column(db.Integer,primary_key=True)
     phone_num=db.Column(db.String(10))
     organization=db.Column(db.String(200),nullable=False)
     def __repr__(self):
         return '<Name %r>' % self.organization
-class Hosts_db(db.Model):
+class Hosts(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     host_id=db.Column(db.Integer)
     event_id=db.Column(db.Integer)
 
-class Attends_db(db.Model):
+class Attends(db.Model):
     attending_id=db.Column(db.Integer,primary_key=True)
     volunteer_num=db.Column(db.String(10),db.ForeignKey('volunteer.phone_num'))
     event_id=db.Column(db.Integer,db.ForeignKey('event.event_id'))
 
-senders = [ Sender("1234567890", "Hello") ]
-volunteers = [ Volunteer() ]
-hosts = [ Host() ]
+
+senders = [ Senderclass("1234567890", "Hello") ]
+volunteers = [ Volunteerclass() ]
+hosts = [ Hostclass() ]
 
 def message_processing(recieved_message):
     """_summary_: This function will process the message that the user sends to the bot.
@@ -196,7 +197,7 @@ def message_processing(recieved_message):
 
     else:
         # If the number is not in the list of senders, we will add them to the list of senders and append their message in texts
-        new_sender = Sender(recieved_message.phone_number, recieved_message.text)
+        new_sender = Senderclass(recieved_message.phone_number, recieved_message.text)
         senders.append(new_sender)
 
 
@@ -211,24 +212,28 @@ def volunteer_prompt_response(sender, output_message):
             
             if volunteer.full_name == None: # if name is not registered yet
                 volunteer.full_name = sender.get_texts()[-1]
-                return "Thank you for registering as a volunteer, " + volunteer.full_name + ". Please text the name of the" \
-                    " organization you would like to volunteer for, our partnerships include\n" \
-                    "1. YMCA \n2. Food Bank \n3. Habitat for Humanity \n4. Saint Jude's Hospital"
+                data = data=Host.query.all()
+                body = "Thank you for registering as a volunteer, " + volunteer.full_name + ". Please text the name of the" \
+                    " organization you would like to volunteer for.\nOur partnerships include\n"
+                for d in data:
+                    body += d.organization + "\n"
+                body += "Text the organization you would like to volunteer for."
+                return body
             elif volunteer.events == []: # name registered already
                     volunteer.events.append(sender.get_texts()[-1])
                     return "How many hours are you planning on attending?"
             
             elif volunteer.hours == []:
                 volunteer.hours.append(sender.get_texts()[-1])
-                return "See you at " + volunteer.events[0] + "!"
+                return "You are now registered for the event"
             elif volunteer.hours != None:
                 volunteer.hours.append(sender.get_texts()[-1])
-                body = ("You are attending currently attending {} for {} hours.".format("volunteer.events[-1]", "3"))
+                body = ("You are attending currently attending " + volunteer.events[0])
                 return body
     else:
         
         # Create a new volunteer object
-            volunteer = Volunteer()
+            volunteer = Volunteerclass()
             volunteer.phone_number = sender.phone_number
             volunteers.append(volunteer)
             return "Welcome to Volunteer Now! Please text your full name to register as a volunteer."
@@ -254,7 +259,7 @@ def host_prompt_response(sender, output_message):
 
     else:
     # Saves as sender object until approved by admin
-        host = Host()
+        host = Hostclass()
         host.set_phone_number(sender.phone_number)
         hosts.append(host)
 
@@ -275,7 +280,13 @@ def add_host_promt_response(sender, output_text):
                 return "Please enter the hours available at the event"
             elif host.hours_available == []:
                 host.set_hours_available(sender.get_texts()[-1])
-                return "Thank you for registering as a host!"
+                new_host = Host(phone_num="+19412501194", organization=host.organization)
+                try:
+                    db.session.add(host)
+                    db.session.commit()
+                except:
+                    db.session.rollback()
+                return "Thank you for registering as a host!"\
 
 
     # if the number entered isn't registed already then add it as a host
@@ -289,11 +300,33 @@ def add_host_promt_response(sender, output_text):
 
 
     else:
-        new_sender = Sender(sender.phone_number, sender.get_texts()[-1])
+        new_sender = Senderclass(sender.phone_number, sender.get_texts()[-1])
         return "Please enter the phone number of the organization you want to add. (Format: +1##########)"
 
 def no_prompt_response(sender):
     return "Please text Volunteer or Host"
+
+# add hosts to the database
+host = [
+    ['YMCA','2392759622']
+    ,['Food Bank','2393347007']
+    ,['Habitat for Humanity','2396520434']
+    ,['Salvation Army','2392781551']
+    ,['Goodwill','2399952106']
+]
+
+try:
+    elete=db.session.query(Host).delete()
+    db.session.commit()
+except:
+    db.session.rollback()
+for i in host:
+    new_host = Host(organization=i[0],phone_num=i[1])
+    try:
+        db.session.add(new_host) # db.session.delete(user_to_delete)
+        db.session.commit()
+    except:
+        print(f'error on {new_host.organization}')
 
 @app.route('/generate',methods=['POST','GET'])
 def generate():
@@ -327,12 +360,12 @@ def generate():
         ['9287441210','Ronald Chatalier',200]
     ]
     try:
-        elete=db.session.query(Volunteer_db).delete()
+        elete=db.session.query(Volunteer).delete()
         db.session.commit()
     except:
         db.session.rollback()
     for v in volunteer:
-        new_volunteer=Volunteer_db(phone_num=v[0],name=v[1],hours=v[2])
+        new_volunteer=Volunteer(phone_num=v[0],name=v[1],hours=v[2])
         try:
             db.session.add(new_volunteer)
             db.session.commit()
@@ -340,20 +373,20 @@ def generate():
             print(f'error on {new_volunteer.name}')
     msg+='\nVolunteer generated '
     try:
-        elete=db.session.query(Event_db).delete()
+        elete=db.session.query(Event).delete()
         db.session.commit()
     except:
         db.session.rollback()
 
     try:
-        elete=db.session.query(Attends_db).delete()
+        elete=db.session.query(Attends).delete()
         db.session.commit()
         msg+='Generated Attends'
     except:
         db.session.rollback()
 
     try:
-        elete=db.session.query(Hosts_db).delete()
+        elete=db.session.query(Hosts).delete()
         db.session.commit()
     except:
         db.session.rollback()
@@ -366,7 +399,7 @@ def generate():
     ]
     for e in event:
         try:
-            new_event=Event_db(host_id=1,date=e[2],hours=e[3],name=e[4],location=e[5],description=e[6])
+            new_event=Event(host_id=1,date=e[2],hours=e[3],name=e[4],location=e[5],description=e[6])
             db.session.add(new_event)
             db.session.commit()
             msg+='Generated Event'
@@ -383,7 +416,7 @@ def add():
     if request.method=="POST":
         name=request.form['name'] #form input name
         phone=request.form['phone']#
-        new_host=Host_db(organization=name,phone_num=phone)
+        new_host=Host(organization=name,phone_num=phone)
         print(new_host)
         try:
             db.session.add(new_host) # db.session.delete(user_to_delete)
@@ -402,18 +435,18 @@ def add():
 def addevent():
     if request.method == "POST":
         try:
-            host_id = Host_db.query.filter_by(organization=request.form['host']).first().host_id
+            host_id = Host.query.filter_by(organization=request.form['host']).first().host_id
             if host_id is not None:
                 date=(request.form['date'])[:10] # date format issues...
                 hours=request.form['hours']
                 name=request.form['name']
                 location=request.form['location']
                 description=request.form['desc']
-                new=Event_db(host_id=host_id,date=date,hours=hours,name=name,location=location,description=description)
+                new=Event(host_id=host_id,date=date,hours=hours,name=name,location=location,description=description)
                 try:
                     db.session.add(new)
                     db.session.commit()
-                    new_hosts_event=Hosts_db(host_id=new.host_id,
+                    new_hosts_event=Hosts(host_id=new.host_id,
                     event_id=new.event_id)
                     db.session.add(new_hosts_event)
                     db.session.commit()
@@ -431,10 +464,10 @@ def index():
 
 @app.route('/showevents',methods=['POST','GET'])
 def showevents():
-    hosts = Host_db.query.order_by(Host_db.host_id).all()
+    hosts = Host.query.order_by(Host.host_id).all()
     names = []
     #print(hosts)
-    events = db.session.query(Event_db,Host).filter(Event_db.host_id==Host_db.host_id)#Event.query.order_by(Event.date_created)
+    events = db.session.query(Event,Host).filter(Event.host_id==Host.host_id)#Event.query.order_by(Event.date_created)
 
     return render_template("showevents.html",events=events)
 
@@ -443,10 +476,10 @@ def attend(id):
     volunteer_phone= '4079872931'
 
     #if not already attending...
-    if Attends_db.query.filter(Attends_db.event_id==id,Attends_db.volunteer_num==volunteer_phone).count()==0:
+    if Attends.query.filter(Attends.event_id==id,Attends.volunteer_num==volunteer_phone).count()==0:
 
         try:
-            new_attends = Attends_db(volunteer_num=volunteer_phone,event_id=id)
+            new_attends = Attends(volunteer_num=volunteer_phone,event_id=id)
             db.session.add(new_attends)
             db.session.commit()
         except:
@@ -462,7 +495,7 @@ def viewhistory(id):
     #return 'hi'
     if not id:
         id =1
-    events = db.session.query(Event_db,Attends_db,Host_db).filter(Event_db.event_id==Attends_db.event_id,Host_db.host_id==Event_db.host_id,Attends_db.volunteer_num==id)
+    events = db.session.query(Event,Attends,Host).filter(Event.event_id==Attends.event_id,Host.host_id==Event.host_id,Attends.volunteer_num==id)
     for e,a,h in events:
         print(e.name,a.volunteer_num,h.organization)
     return render_template('viewhistory.html', events=events)
@@ -470,17 +503,22 @@ def viewhistory(id):
 @app.route('/new')
 def new():
     #colt steel
-    events = db.session.query(Event_db,Attends_db,Host_db).filter(Event_db.event_id==Attends_db.event_id,Host.host_id==Event_db.host_id,Attends_db.volunteer_num=='4079872931')
+    events = db.session.query(Event,Attends,Host).filter(Event.event_id==Attends.event_id,Host.host_id==Event.host_id,Attends.volunteer_num=='4079872931')
     for e,a,h in events:
         print(e.name,a.volunteer_num,h.organization)
     return render_template('new.html', events=events)
 
 @app.route('/data')
 def data(): 
-    events = db.session.query(Event_db,Host).filter(Event_db.host_id==Host_db.host_id)
+    events = db.session.query(Event,Host).filter(Event.host_id==Host.host_id)
     for e,h in events:
         print(f'e.name {e.name}')
     return render_template('data.html',events=events)
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
 
 @app.route("/sms", methods=['GET', 'POST'])
 def incoming_sms():
@@ -494,7 +532,13 @@ def incoming_sms():
     resp = MessagingResponse()
 
     # Add a message so we can use message.number and message.text
-    recieved_message = Message(request.values.get('From', None), request.values.get('Body', None))
+    recieved_message = Messageclass(request.values.get('From', None), request.values.get('Body', None))
+    recieved_message_db = Message(user_phone=recieved_message.phone_number, message=recieved_message.text)
+    try:
+        db.session.add(recieved_message_db)
+        db.session.commit()
+    except:
+        db.session.rollback()
 
     #  process the message (appends phone number to senders list and appends message to texts list)
     message_processing(recieved_message)
@@ -534,7 +578,14 @@ def main(): # debugging code
         resp = MessagingResponse()
 
         # Add a message so we can use message.number and message.text
-        recieved_message = Message("+19412501194", output_text)
+        recieved_message = Messageclass("+19412501194", output_text)
+
+        recieved_message_db = Message(user_phone=recieved_message.phone_number, message=recieved_message.text)
+        try:
+            db.session.add(recieved_message_db)
+            db.session.commit()
+        except:
+            db.session.rollback()
 
         #  process the message (appends phone number to senders list and appends message to texts list)
         message_processing(recieved_message)
@@ -561,10 +612,6 @@ def main(): # debugging code
         resp.message(output_text)
         print(output_text)
 
-
-if __name__ == "__main__":
-    main()
-"""
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
-"""
+    main()
+    #app.run(host='0.0.0.0', port=8080, debug=True)
