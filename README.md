@@ -39,7 +39,6 @@ As it's hard to keep track of multiple events occurring constantly and missing o
 - Completing a full stack project within the given time frame
 - Coming up with a feasible idea
 - Buiding a database with SQLAlchemy
-- 
 
 ## Accomplishments that we're proud of
 - Learning Flask
@@ -52,4 +51,3 @@ As it's hard to keep track of multiple events occurring constantly and missing o
 
 ## What's next for VolunteerNow
 - Having to add more features and allow more devices to cooperate with it
--
