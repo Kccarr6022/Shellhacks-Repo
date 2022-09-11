@@ -33,9 +33,6 @@ As it's hard to keep track of multiple events occurring constantly and missing o
 - Python: for backend
 - AWS: for cloud hosting
 
-## Best domain from domain.com
-[https://volunteernow.tech](http://18.118.32.177:8080/)
-
 ## Challenges we ran into
 - Implementing AWS for the first time 
 - Making a fully functional website
@@ -55,4 +52,4 @@ As it's hard to keep track of multiple events occurring constantly and missing o
 
 ## What's next for VolunteerNow
 - Having to add more features and allow more devices to cooperate with it
-- 
+-
