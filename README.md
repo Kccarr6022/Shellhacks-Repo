@@ -9,15 +9,14 @@ A service that allows users to search and provide information for volunteer oppo
 ![screenshot](VNLogo.png)
 
 # Example
-
-![screenshot](WebsiteExample.png)
 ![screenshot](LoginExample.png)
+![screenshot](WebsiteExample.png)
+
 
 ![screenshot](MessageExample(1).png)
 ![screenshot](MessageExample(2).png)
 
 # Benefits
-
 - Finding a wide variety of events
 - Easy to find time availability
 - Tracking down completed events
@@ -49,7 +48,7 @@ https://volunteernow.tech
 
 ## What we learned
 - How to implement Flask
+- Updating user interface elements
 
 ## What's next for VolunteerNow
-
 - Having to add more features and allow more devices to cooperate with it
